@@ -42,13 +42,8 @@
 
 ## How to deploy the entire stack set
 
-* Get a SAML token for the environment you wish to deploy to.
-
-* For LOCAL, from the root level, run: 
-```bash
-sh ./elasticsearch/scripts/deploy.sh -e local
-```
-###### * After the stack deploys run the two lambdas in the post deploy stack to finish the install. There is no input schema for the Lambda, it is ignored.
+* You'll need to install pipenv, python, and pip to run the deploy.sh script. Otherwise, you can run just the CloudFormation stacks by themselves (no post-deploy lambdas) using the standard deploy command.
+* Get a SAML token for the environment you wish to deploy to or make sure you have an .aws credentials file.
 
 * For DEV, from the root level, run: 
 ```bash
@@ -61,7 +56,7 @@ sh ./elasticsearch/scripts/deploy.sh -e dev
 sh ./elasticsearch/scripts/deploy.sh -e prod
 ```
 
-###### * After the stack deploys run the two lambdas in the post deploy stack to finish the install. There is no input schema for the Lambda, it is ignored.
+###### * After the stack deploys run the two lambdas in the post deploy stack to finish the install. There is no input schema for the Lambda, it is ignored. If you don't run the lambdas, you will have to make the changes listed in the "fixed by post-deploy script" section by hand.
 
 ## Testing stack outputs locally
 
