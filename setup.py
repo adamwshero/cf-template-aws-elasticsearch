@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
     name="shared-elasticsearch",
     version="0.1.0",
-    author="Aperture Labs",
+    author="Adam Day",
     author_email="##TODO##",
     description="""Post Deployment Scripts for the elasticsearch cluster""",
     url="https://github.com/adamwday/elasticsearch/src/master/",

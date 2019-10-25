@@ -176,23 +176,23 @@ Resources:
         - FromPort: 80
           ToPort: 80
           IpProtocol: tcp
-          CidrIp: 157.130.170.58/32
-          Description: Http access from DHI public IP
+          CidrIp: ##TODO##
+          Description: Http access from public IP
         - FromPort: 80
           ToPort: 80
           IpProtocol: tcp
-          CidrIp: 38.140.185.162/32
-          Description: Http access from DHI public IP
+          CidrIp: ##TODO##
+          Description: Http access from public IP
         - FromPort: 443
           ToPort: 443
           IpProtocol: tcp
-          CidrIp: 157.130.170.58/32
-          Description: Https access from DHI public IP
+          CidrIp: ##TODO##
+          Description: Https access from public IP
         - FromPort: 443
           ToPort: 443
           IpProtocol: tcp
-          CidrIp: 38.140.185.162/32
-          Description: Https access from DHI public IP
+          CidrIp: ##TODO##
+          Description: Https access from public IP
       Tags:
         - Key: Name
           Value: !Sub ${Environment}-kibana-external
@@ -225,14 +225,14 @@ Resources:
         - FromPort: 22
           ToPort: 22
           IpProtocol: tcp
-          CidrIp: 157.130.170.58/32
-          Description: SSH from DHI
+          CidrIp: ##TODO##
+          Description: SSH from corp office
       SecurityGroupIngress:
         - FromPort: 22
           ToPort: 22
           IpProtocol: tcp
-          CidrIp: 38.140.185.162/32
-          Description: SSH from DHI
+          CidrIp: ##TODO##
+          Description: SSH from corp office
         - FromPort: 80
           ToPort: 80
           IpProtocol: tcp
