@@ -1,3 +1,7 @@
-elasticsearch/config/default.conf
-elasticsearch/test-output.json
-elasticsearch/infrastructure/local.json
+./config/default.conf
+./test-output.json
+./infrastructure/local.json
+./deploy
+Pipfile
+Pipfile.lock
+requirements.txt
