@@ -344,10 +344,6 @@ Resources:
           Value: !Sub ${Application}
       ServiceRoleArn: arn:aws:iam::229357985605:role/gig-dev-codeDeploy
 
-#######################################################################
-# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
-# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
-# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
 Outputs:
   NginxInternalIp:
     Value: !GetAtt ProxyInstance.PrivateIp
