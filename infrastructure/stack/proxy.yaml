@@ -107,7 +107,7 @@ Resources:
         - Key: BusinessUnit
           Value: !Ref Brand
         - Key: Description
-          Value: AWS target group for profile acquisition PAGES system.
+          Value: AWS target group for your system.
         - Key: StackId
           Value: !Sub '${AWS::StackName}'
         - Key: Stack
