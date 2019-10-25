@@ -17,7 +17,7 @@ Parameters:
     Type: String
   ProxyEC2InstanceSSHKey:
     Type: String
-    Description: SSH key used for profile-acq EC2 instances.
+    Description: SSH key used for your EC2 instances.
   ProxyEC2InstanceType:
     Type: String
   ProxyEC2ImageId:
@@ -320,14 +320,14 @@ Resources:
   ProxyApplicationConfig:
     Type: AWS::CodeDeploy::Application
     Properties: 
-      ApplicationName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      ApplicationName: !Sub ${Environment}-${Brand}-kibana
       ComputePlatform: Server
 
   ProxyDeploymentConfig:
     Type: AWS::CodeDeploy::DeploymentConfig
     DependsOn: ProxyApplicationConfig
     Properties: 
-      DeploymentConfigName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      DeploymentConfigName: !Sub ${Environment}-${Brand}-kibana
       MinimumHealthyHosts: 
         Type: HOST_COUNT
         Value: 0
@@ -336,7 +336,7 @@ Resources:
     Type: AWS::CodeDeploy::DeploymentGroup
     DependsOn: ProxyApplicationConfig
     Properties: 
-      ApplicationName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      ApplicationName: !Sub ${Environment}-${Brand}-kibana
       DeploymentGroupName: !Sub ${Environment}
       Ec2TagFilters:
         - Key: Application
