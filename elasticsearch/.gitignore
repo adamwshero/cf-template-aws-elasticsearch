@@ -1,0 +1,3 @@
+elasticsearch/config/default.conf
+elasticsearch/test-output.json
+elasticsearch/infrastructure/local.json

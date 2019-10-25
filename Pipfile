@@ -1,0 +1,19 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pylint = "*"
+pycodestyle = "*"
+autopep8 = "*"
+pep8 = "*"
+elasticsearch = {editable = true,path = "elasticsearch/"}
+
+[packages]
+boto3 = "*"
+botocore = "*"
+python-json-logger = "*"
+
+[requires]
+python_version = "3.7"

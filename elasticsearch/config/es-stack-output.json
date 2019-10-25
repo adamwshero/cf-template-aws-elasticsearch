@@ -1,0 +1,14 @@
+[
+    {
+        "OutputKey": "NginxProxyDNS",
+        "OutputValue": "something.com"
+    },
+    {
+        "OutputKey": "ElasticsearchDomainEndpoint",
+        "OutputValue": "yourelasticsearchdomain.us-east-1.es.amazonaws.com"
+    },
+    {
+        "OutputKey": "KibanaEndpoint",
+        "OutputValue": "yourelasticsearchdomain.us-east-1.es.amazonaws.com/_plugin/kibana/"
+    }
+]

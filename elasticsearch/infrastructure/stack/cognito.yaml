@@ -1,0 +1,271 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cognito user pool for your Elasticsearch Domain.
+Parameters:
+  Environment:
+    Description: Name of the environment for which this application resides.
+    Type: String
+  Application:
+    Description: Name of the application.
+    Type: String
+  Brand:
+    Description: Name of the company (brand) this application is supporting.
+    Type: String
+  Owner:
+    Description: Owning team of this application.
+    Type: String
+  KibanaEndpoint:
+    Description: Kibana endpoint URL for Elasticsearch Cluster
+    Type: String
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AutoVerifiedAttributes: 
+        - email
+      UserPoolName: !Sub ${Environment}-##TODO##
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: True
+      AllowedOAuthScopes:
+        - phone
+        - email
+        - openid
+      ClientName: !Sub ${Environment}-##TODO##
+      CallbackURLs:
+        - !Ref KibanaEndpoint
+      LogoutURLs:
+        - !Ref KibanaEndpoint
+      GenerateSecret: true
+      SupportedIdentityProviders:
+        - COGNITO
+      UserPoolId: !Ref CognitoUserPool
+
+  CognitoUserPoolAdmin:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      DesiredDeliveryMediums: 
+        - EMAIL
+      UserAttributes:
+        - Name: email
+          Value: ##TODO##
+        - Name: email_verified
+          Value: True
+        - Name: given_name
+          Value: ##TODO##
+        - Name: family_name
+          Value: ##TODO##
+      Username: ##TODO##
+
+  CognitoUserPoolStandardUser:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      DesiredDeliveryMediums:
+        - EMAIL
+      ForceAliasCreation: false
+      UserAttributes:
+        - Name: email
+          Value: ##TODO##
+        - Name: email_verified
+          Value: True
+        - Name: given_name
+          Value: ##TODO##
+        - Name: family_name
+          Value: ##TODO##
+      Username: ##TODO##
+
+  # Currently supported by AWS but can't attach roles to it..so f*** it.
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: !Sub ${Environment}_##TO_DO## #underscores needed, hyphens not allowed
+      AllowUnauthenticatedIdentities: False
+      CognitoIdentityProviders: 
+        - ClientId: !Ref CognitoUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+
+  # Currently not supported by AWS but ready here when AWS can un-f*** themselves.
+
+  # CognitoIdentityPoolRoleAttachment:
+  #  Type: AWS::Cognito::IdentityPoolRoleAttachment
+  #  Properties:
+  #    IdentityPoolId: !Ref CognitoIdentityPool
+  #    Roles:
+  #      authenticated:
+  #        Fn::GetAtt:
+  #          - CognitoAuthRole
+  #          - Arn
+  #      unauthenticated:
+  #        Fn::GetAtt:
+  #          - CognitoUnAuthRole
+  #          - Arn
+
+  CognitoAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub AWS_${Environment}_Cognito_${Application}_Auth_Role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}-Cognito-Auth-Role
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Cognito IAM authentication role for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  CognitoUnAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub AWS_${Environment}_Cognito_${Application}_UnAuth_Role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}-Cognito-Unauth-Role
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Cognito IAM unauthentication role for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  CognitoAuthAccessPolicy1:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: CognitoAuthAccessPolicy1
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - mobileanalytics:PutEvents
+              - cognito-sync:*
+              - cognito-identity:*
+            Resource:
+              - '*'
+      Roles:
+        - !Ref CognitoAuthRole
+
+  CognitoAuthAccessPolicy2:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: CognitoAuthAccessPolicy2
+      PolicyDocument:
+        Statement:
+          - Sid: VisualEditor0
+            Effect: Allow
+            Action:
+              - cognito-idp:DescribeUserPoolDomain
+              - cognito-idp:CreateUserPool
+              - cognito-idp:ListUserPools
+              - cognito-idp:ListUsers
+              - es:ESHttp*
+            Resource: '*'
+      Roles:
+        - !Ref CognitoAuthRole
+
+  CognitoAuthAccessPolicy3:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: CognitoAuthAccessPolicy3
+      PolicyDocument:
+        Statement:
+          - Sid: VisualEditor1
+            Effect: Allow
+            Action: 
+              - cognito-idp:*
+            Resource: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPool}
+      Roles:
+        - !Ref CognitoAuthRole
+
+  CognitoUnauthAccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: CognitoUnauthAccessPolicy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - mobileanalytics:PutEvents
+              - cognito-sync:*
+            Resource: 
+              - '*'
+      Roles:
+        - !Ref CognitoUnAuthRole
+
+#######################################################################
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+Outputs:
+  CognitoStackName:
+    Value: !Ref 'AWS::StackName'
+ # NOT YET SUPPORTED IN CLOUDFORMATION BUT WE'LL MAKE A PARAM INSTEAD #
+  CognitoUserPoolDomain:
+    Value: !Ref CognitoUserPoolDomain
+# ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+#######################################################################
+  CognitoUserPool:
+    Value: !GetAtt CognitoUserPool.ProviderName
+  CognitoUserPoolArn:
+    Value: !GetAtt CognitoUserPool.Arn
+  CognitoUserPoolClientId:
+    Value: !Ref CognitoUserPool
+  CognitoIdentityPoolId:
+    Value: !Ref CognitoIdentityPool
+  CognitoIdentityPoolName:
+    Value: !GetAtt CognitoIdentityPool.Name
+  CognitoAuthIamRole:
+    Value: !GetAtt CognitoAuthRole.Arn
+  CognitoUnauthIamRole:
+    Value: !GetAtt CognitoUnAuthRole.Arn

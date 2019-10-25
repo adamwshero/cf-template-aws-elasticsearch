@@ -1,0 +1,211 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ElasticsearchDomain resource
+Parameters:
+  Environment:
+    Description: Name of the environment for which this application resides.
+    Type: String
+  Application:
+    Description: Name of the application.
+    Type: String
+  Brand:
+    Description: Name of the company (brand) this application is supporting.
+    Type: String
+  Owner:
+    Description: Owning team of this application.
+    Type: String
+  ElasticsearchDomainName:
+    Description: User defined Elasticsearch Domain name
+    Type: String
+  ElasticsearchGroupDescription:
+    Description: Description for the Elasticsearch group.
+    Type: String
+  ElasticsearchVersion:
+    Description: User defined Elasticsearch Version
+    Type: String
+  ElasticsearchDedicatedMasterEnabled:
+    Description: Enables or Disables dedicated master instances.
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+  ElasticsearchDedicatedMasterType:
+    Description: Type of EC2 instance.
+    Type: String
+  ElasticsearchDedicatedMasterCount:
+    Description: Number of master ES instances.
+    Type: Number
+    AllowedValues: 
+    - 3
+    - 5
+  ElasticsearchInstanceType:
+    Description: Type or class of instance to be used.
+    ConstraintDescription: r5.large, r5.xlarge not available in us-east-1e
+    Type: String
+  ElasticsearchInstanceCount:
+    Description: Number of Elasticsearch data instances.
+    ConstraintDescription: Must be an even number for equal AZ distribution when zone awareness is enabled.
+    Type: Number
+  ElasticsearchZoneAwarenessEnabled:
+    Description: Enables zone awareness for even shard allocation
+    Type: String
+  ElasticsearchEBSEnabled:
+    Description: Enables EBS storage.
+    Type: String
+  ElasticsearchEncryptionAtRest:
+    Description: Enables encryption for data at rest.
+    Type: String
+  ElasticsearchNodeToNodeEncryption:
+    Description: Enables encryption of data betwixt each instance.
+    Type: String
+  ElasticsearchSnapshotStartHour:
+    Description: Determines when the snapshot for the cluster begins.
+    Type: String
+  ElasticsearchIops:
+    Description: Enables Iops for EBS volumes
+    Type: String
+  ElasticsearchVolumeSize:
+    Description: Determines the EBS volume size to use.
+    Type: String
+  ElasticsearchVolumeType:
+    Description: Determines the EBS volume type to use.
+    Type: String
+    AllowedValues:
+    - 'gp2'       #general purpose
+    - 'io1'       #iops
+    - 'standard'  #magnetic
+  ElasticsearchAvailabilityZone:
+    Description: AWS availability zone (AZ) to be used for a given resource.
+    Type: String
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+  ElasticsearchSubnet1:
+    Description: Network subnet where the Elasticsearch domain resides.
+    Type: String
+  ElasticsearchSubnet2:
+    Description: Network subnet where the Elasticsearch domain resides.
+    Type: String
+  ElasticsearchVPC:
+    Description: Virtual Private Cloud (VPC) id to be used.
+    Type: String
+
+Resources:
+  ElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Ref ElasticsearchDomainName
+      ElasticsearchVersion: !Ref ElasticsearchVersion
+      ElasticsearchClusterConfig:
+        DedicatedMasterCount: !Ref ElasticsearchDedicatedMasterCount
+        DedicatedMasterEnabled: !Ref ElasticsearchDedicatedMasterEnabled
+        DedicatedMasterType: !Ref ElasticsearchDedicatedMasterType
+        InstanceCount: !Ref ElasticsearchInstanceCount
+        InstanceType: !Ref ElasticsearchInstanceType
+        ZoneAwarenessEnabled: !Ref ElasticsearchZoneAwarenessEnabled
+      EBSOptions:
+        EBSEnabled: !Ref ElasticsearchEBSEnabled
+        Iops: !Ref ElasticsearchIops
+        VolumeSize: !Ref ElasticsearchVolumeSize
+        VolumeType: !Ref ElasticsearchVolumeType
+      EncryptionAtRestOptions:
+        Enabled: !Ref ElasticsearchEncryptionAtRest
+      NodeToNodeEncryptionOptions:
+        Enabled: !Ref ElasticsearchNodeToNodeEncryption
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: !Ref ElasticsearchSnapshotStartHour
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS_${Environment}_Cognito_${Application}_Auth_Role
+            Action: 'es:*'
+            Resource: !Sub arn:aws:cognito-idp:us-east-1:${AWS::AccountId}:domain/${Environment}-##TODO##/*
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+        indices.fielddata.cache.size: '40'
+      VPCOptions:
+        SubnetIds:
+          - !Ref ElasticsearchSubnet1
+          - !Ref ElasticsearchSubnet2
+        SecurityGroupIds:
+          - !Ref ElasticsearchSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}-ES-Domain
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Elasticsearch domain for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+  ElasticsearchSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Ref ElasticsearchGroupDescription
+      VpcId: !Ref ElasticsearchVPC
+      GroupName: !Sub ${Environment}-${Brand}-${Application}
+      # Currently needs the "ProxySGExternal" group added as an ingress rule on port 
+      # 443 but cannot due to circular dependency so we'll do it in a post-deploy script
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS security group for ElasticSearch domain.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+Outputs:
+  ElasticsearchDomainArn:
+    Value: !GetAtt ElasticsearchDomain.DomainArn
+###############################################################
+# DO NOT REMOVE - REQUIRED FOR CODEDEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+  ElasticsearchDomainEndpoint:
+    Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+  KibanaEndpoint:
+    Value: 
+      Fn::Join:
+      - ''
+      - - "https://"
+        - Fn::GetAtt:
+          - ElasticsearchDomain
+          - DomainEndpoint
+        - "/_plugin/kibana/"
+# ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# DO NOT REMOVE - REQUIRED FOR CODEDEPLOY SCRIPTS TO EXECUTE  #
+###############################################################
+  ElasticsearchSecurityGroupId:
+    Value: !Ref ElasticsearchSG
+  ElasticsearchSubnetId1:
+    Value: !Ref ElasticsearchSubnet1
+  ElasticsearchSubnetId2:
+    Value: !Ref ElasticsearchSubnet2
+#######################################################################
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+  ElasticsearchStackName:
+    Value: !Ref 'AWS::StackName'
+# ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+#######################################################################

@@ -1,0 +1,119 @@
+Transform: AWS::Serverless-2016-10-31
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda stack for all post deploy scripts
+
+Parameters:
+  Owner:
+    Type: String
+  Brand:
+    Type: String
+  Application:
+    Type: String
+  Environment:
+    Type: String
+  MainStackName:
+    Type: String
+  ElasticSearchStackName:
+    Type: String
+  CognitoStackName:
+    Type: String
+  NginxStackName:
+    Type: String
+  CognitoUserPoolDomain:
+    Type: String
+  Runtime:
+    Type: String
+    Default: python3.7
+  Memory:
+    Type: Number
+    Default: 512
+  Timeout:
+    Type: Number
+    Default: 60
+  IngressPort:
+    Type: Number
+    Default: 443
+  Protocol:
+    Type: String
+    Default: tcp
+  LogLevel:
+    Type: String
+    Default: INFO
+
+Resources:
+  CognitoPostDeployLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${Environment}-${Brand}-${Application}-cognito-post-deploy
+      Handler: cognito_post_deploy_handler.config_cognito_for_elasticsearch
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - AWSCloudFormationReadOnlyAccess
+        - AmazonESCognitoAccess
+        - IAMReadOnlyAccess
+        - Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:CreateUserPoolDomain
+              - cognito-idp:DescribeUserPoolDomain
+              - cognito-idp:DeleteUserPoolDomain
+              - iam:PassRole
+              - es:UpdateElasticsearchDomainConfig
+            Resource: '*'
+      CodeUri: ../../deploy
+      Tracing: Active
+      Runtime: !Ref Runtime
+      MemorySize: !Ref Memory
+      Timeout: !Ref Timeout
+      Environment:
+        Variables:
+          LogLevel: !Ref LogLevel
+          MainStackName: !Ref MainStackName
+          ElasticSearchStackName: !Ref ElasticSearchStackName
+          CognitoStackName: !Ref CognitoStackName
+          NginxStackName: !Ref NginxStackName
+          KibanaDomain: !Ref CognitoUserPoolDomain
+          CognitoRoleName: 'CognitoAccessForAmazonES'
+      Tags:
+        Name: !Sub ${Environment}-${Brand}-${Application}-cognito-post-deploy
+        Application: !Ref Application
+        Environment: !Ref Environment
+        Owner: !Ref Owner
+        Brand: !Ref Brand
+
+  ElasticSearchIngressPostDeployLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${Environment}-${Brand}-${Application}-elasticsearch-ingress-post-deploy
+      Handler: elasticsearch_post_deploy_handler.config_cognito_for_elasticsearch
+      Policies:
+        - AWSXrayWriteOnlyAccess
+        - AWSCloudFormationReadOnlyAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:Describe*
+                - ec2:AuthorizeSecurityGroupIngress
+              Resource: '*'
+      CodeUri: ../../deploy
+      Tracing: Active
+      Runtime: !Ref Runtime
+      MemorySize: !Ref Memory
+      Timeout: !Ref Timeout
+      Environment:
+        Variables:
+          LogLevel: !Ref LogLevel
+          MainStackName: !Ref MainStackName
+          ElasticSearchStackName: !Ref ElasticSearchStackName
+          CognitoStackName: !Ref CognitoStackName
+          NginxStackName: !Ref NginxStackName
+          IngressPort: !Ref IngressPort
+          Protocol: !Ref Protocol
+      Tags:
+        Name: !Sub ${Environment}-${Brand}-${Application}-elasticsearch-ingress-post-deploy
+        Application: !Ref Application
+        Environment: !Ref Environment
+        Owner: !Ref Owner
+        Brand: !Ref Brand

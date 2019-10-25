@@ -1,0 +1,383 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Ngnix reverse proxy for the Elasticsearch Domain.
+Parameters:
+  Environment:
+    Description: Name of the environment for which this application resides.
+    Type: String
+    AllowedPattern: '[a-z0-9]+'
+    MaxLength: 15
+  Application:
+    Description: Name of the application.
+    Type: String
+  Brand:
+    Description: Name of the company (brand) this application is supporting.
+    Type: String
+  Owner:
+    Description: Owning team of this application.
+    Type: String
+  ProxyEC2InstanceSSHKey:
+    Type: String
+    Description: SSH key used for profile-acq EC2 instances.
+  ProxyEC2InstanceType:
+    Type: String
+  ProxyEC2ImageId:
+    Type: String
+    Description: AMI to use for EC2 reverse proxy nodes
+  # ProxyEC2ImageId:
+  #   Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+  #   Description: AMI to use for EC2 reverse proxy nodes
+  #/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  ProxyEC2InstanceProfile:
+    Type: String
+  ProxySubnet1:
+    Type: String
+  ProxyLBSubnet1:
+    Type: String
+  ProxyLBSubnet2:
+    Type: String
+  ProxyLBSubnet3:
+    Type: String
+  ProxyVPC:
+    Type: String
+  ProxyR53HostedZone:
+    Type: String
+  ProxyR53Name:
+    Type: String
+  ProxyCertificate:
+    Type: String
+  CognitoUserPoolArn:
+    Type: String
+  CognitoUserPoolClientId:
+    Type: String
+  CognitoUserPoolDomain:
+    Type: String
+
+Resources:
+  KibanaLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${Environment}-${Brand}-${Application}
+      Scheme: internet-facing
+      Subnets: 
+        - !Ref ProxyLBSubnet1
+        - !Ref ProxyLBSubnet2
+        - !Ref ProxyLBSubnet3
+      SecurityGroups:
+        - !Ref ProxySGExternal
+      Type: application
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Application}
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: ALB for Nginx reverse proxy for the Elasticsearch domain
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+  
+  ProxyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${Environment}-${Brand}-${Application}-tg #Must update the name if you change a param or CF will fail.
+      HealthCheckPath: /elb-status
+      HealthCheckPort: 80
+      Port: 80
+      Protocol: HTTP
+      TargetType: instance
+      Targets:
+        - Id: !Ref ProxyInstance
+      VpcId: !Ref ProxyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}-target-group
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS target group for profile acquisition PAGES system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  HTTPListener:
+    DependsOn: KibanaLoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - RedirectConfig:
+            Host: "#{host}"
+            Path: "/#{path}"
+            Port: 443
+            Protocol: HTTPS
+            StatusCode: HTTP_301
+          Type: redirect
+      LoadBalancerArn: !Ref KibanaLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  HTTPSListener:
+    DependsOn: KibanaLoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Certificates:
+        - CertificateArn: !Ref ProxyCertificate
+      DefaultActions:
+        # - AuthenticateCognitoConfig:
+        #     UserPoolArn: !Ref CognitoUserPoolArn
+        #     UserPoolClientId: !Ref CognitoUserPoolClientId
+        #     UserPoolDomain: !Sub ${Environment}-${CognitoUserPoolDomain}
+        #   Type: authenticate-cognito
+        #   Order: 10
+        - Type: forward
+          TargetGroupArn: !Ref ProxyTargetGroup
+          Order: 20
+      LoadBalancerArn: !Ref KibanaLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+
+  KibanaDNS:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref ProxyR53HostedZone
+      Comment: Kibana alias targeted to LoadBalancer.
+      RecordSets:
+      - Name: !Ref ProxyR53Name 
+        Type: A
+        AliasTarget:
+          HostedZoneId: !GetAtt KibanaLoadBalancer.CanonicalHostedZoneID
+          DNSName: !GetAtt KibanaLoadBalancer.DNSName
+
+  ProxySGExternal:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref ProxyVPC
+      GroupDescription: Allow Access
+      GroupName: !Sub ${Environment}-kibana-external
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+      SecurityGroupIngress:
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          CidrIp: 157.130.170.58/32
+          Description: Http access from DHI public IP
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          CidrIp: 38.140.185.162/32
+          Description: Http access from DHI public IP
+        - FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+          CidrIp: 157.130.170.58/32
+          Description: Https access from DHI public IP
+        - FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+          CidrIp: 38.140.185.162/32
+          Description: Https access from DHI public IP
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-kibana-external
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: Load balancer to interface with the Nginx proxy.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  ProxySGInternal:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG for access to Kibana endpoint
+      GroupName: !Sub ${Environment}-kibana-internal-sg
+      SecurityGroupEgress:
+        - CidrIp: '0.0.0.0/0'
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+      SecurityGroupIngress:
+        - FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+          CidrIp: 157.130.170.58/32
+          Description: SSH from DHI
+      SecurityGroupIngress:
+        - FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+          CidrIp: 38.140.185.162/32
+          Description: SSH from DHI
+        - FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+          SourceSecurityGroupId: !Ref ProxySGExternal
+          Description: dev-kibana-external ALB
+      VpcId: !Ref ProxyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-kibana-internal
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: Nginx proxy to interface with the Kibana endpoint.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+      
+  SelfReferenceInternalSecurityGroup:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Self
+      GroupId: !Ref ProxySGInternal
+      SourceSecurityGroupId: !Ref ProxySGInternal
+      IpProtocol: -1
+      FromPort: 0
+      ToPort: 65535
+
+  ProxyInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      KeyName: !Ref ProxyEC2InstanceSSHKey
+      InstanceType: !Ref ProxyEC2InstanceType
+      ImageId: !Ref ProxyEC2ImageId
+      IamInstanceProfile: !Ref ProxyEC2InstanceProfile
+      SubnetId: !Ref ProxySubnet1
+      SecurityGroupIds:
+        - !Ref ProxySGInternal
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-${Application}-Nginx
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: EC2/Nginx instance to interface with the Elasticsearch Kibana endpoint
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+      UserData: 
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+
+          # output log of userdata to /var/log/user-data.log
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+          ## Installing the CodeDeploy agent via user-data so we can do some more configuration when EC2 is up. 
+          ## https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent-operations-install-ubuntu.html
+          apt-get update -y
+          apt-get install ruby -y
+          cd /home/ubuntu 
+          curl --remote-name https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          chmod +x ./install
+          ./install auto
+          apt-get install python3-pip -y
+          pip3 install awscli --upgrade
+
+  ProxyInstanceEIP:
+    Type: AWS::EC2::EIP
+    Properties: 
+      InstanceId: !Ref ProxyInstance
+
+  ProxyApplicationConfig:
+    Type: AWS::CodeDeploy::Application
+    Properties: 
+      ApplicationName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      ComputePlatform: Server
+
+  ProxyDeploymentConfig:
+    Type: AWS::CodeDeploy::DeploymentConfig
+    DependsOn: ProxyApplicationConfig
+    Properties: 
+      DeploymentConfigName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      MinimumHealthyHosts: 
+        Type: HOST_COUNT
+        Value: 0
+  
+  ProxyDeploymentGroupConfig:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    DependsOn: ProxyApplicationConfig
+    Properties: 
+      ApplicationName: !Sub ${Environment}-${Brand}-profile-acq-kibana
+      DeploymentGroupName: !Sub ${Environment}
+      Ec2TagFilters:
+        - Key: Application
+          Type: KEY_AND_VALUE
+          Value: !Sub ${Application}
+      ServiceRoleArn: arn:aws:iam::229357985605:role/gig-dev-codeDeploy
+
+#######################################################################
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+Outputs:
+  NginxInternalIp:
+    Value: !GetAtt ProxyInstance.PrivateIp
+  NginxElasticIp:
+    Value: !Ref ProxyInstanceEIP
+  NginxProxySecurityGroup1:
+    Value: !Ref ProxySGExternal
+  NginxProxySecurityGroup2:
+    Value: !Ref ProxySGInternal
+  NginxProxyDNS:
+    Value: !Ref ProxyR53Name
+  NginxProxyLoadBalancer:
+    Value: !Ref KibanaLoadBalancer
+  NginxProxyListener:
+    Value: !Ref HTTPSListener
+  NginxProxyTargetGroup:
+    Value: !Ref ProxyTargetGroup
+  NginxCodeDeployApplication:
+    Value: !Ref ProxyApplicationConfig
+  NginxCodeDeployDeploymentConfig:
+    Value: !Ref ProxyDeploymentConfig
+  NginxCodeDeployDeploymentGroup:
+    Value: !Ref ProxyDeploymentGroupConfig
+#######################################################################
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+  NginxProxyStackName:
+    Value: !Ref 'AWS::StackName'
+# ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# DO NOT REMOVE - REQUIRED FOR LAMBDA POST DEPLOY SCRIPTS TO EXECUTE  #
+#######################################################################

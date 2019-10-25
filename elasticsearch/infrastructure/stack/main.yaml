@@ -1,0 +1,321 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Master stack for all protected stacks only.
+Parameters:
+  Owner:
+    Type: String
+  Brand:
+    Type: String
+  Application:
+    Type: String
+  Environment:
+    Type: String
+  ElasticsearchDomainName:
+    Description: User defined Elasticsearch Domain name
+    Type: String
+  ElasticsearchGroupDescription:
+    Description: Description for the Elasticsearch group.
+    Type: String
+    Default: Elasticsearch service used to surface data
+  ElasticsearchVersion:
+    Description: User defined Elasticsearch Version
+    Type: String
+  ElasticsearchDedicatedMasterEnabled:
+    Description: Enables or Disables dedicated master instances.
+    Type: String
+    AllowedValues:
+    - 'true'
+    - 'false'
+  ElasticsearchDedicatedMasterType:
+    Description: Type of EC2 instance.
+    Type: String
+  ElasticsearchDedicatedMasterCount:
+    Description: Number of master ES instances.
+    Type: Number
+    AllowedValues: 
+    - 3
+    - 5
+  ElasticsearchInstanceType:
+    Description: Type or class of instance to be used.
+    ConstraintDescription: r5.large, r5.xlarge not available in us-east-1e
+    Type: String
+  ElasticsearchInstanceCount:
+    Description: Number of Elasticsearch data instances.
+    ConstraintDescription: Must be an even number for equal AZ distribution when zone awareness is enabled.
+    Type: Number
+  ElasticsearchZoneAwarenessEnabled:
+    Description: Enables zone awareness for even shard allocation
+    Type: String
+  ElasticsearchEBSEnabled:
+    Description: Enables EBS storage.
+    Type: String
+  ElasticsearchEncryptionAtRest:
+    Description: Enables encryption for data at rest.
+    Type: String
+  ElasticsearchNodeToNodeEncryption:
+    Description: Enables encryption of data betwixt each instance.
+    Type: String
+  ElasticsearchSnapshotStartHour:
+    Description: Determines when the snapshot for the cluster begins.
+    Type: String
+  ElasticsearchIops:
+    Description: Enables Iops for EBS volumes
+    Type: String
+  ElasticsearchVolumeSize:
+    Description: Determines the EBS volume size to use.
+    Type: String
+  ElasticsearchVolumeType:
+    Description: Determines the EBS volume type to use.
+    Type: String
+    AllowedValues:
+    - 'gp2'       #general purpose
+    - 'io1'       #iops
+    - 'standard'  #magnetic
+  ElasticsearchAvailabilityZone:
+    Description: AWS availability zone (AZ) to be used for a given resource.
+    Type: String
+  ElasticsearchSubnet1:
+    Description: Network subnet where the Elasticsearch domain resides.
+    Type: String
+  ElasticsearchSubnet2:
+    Description: Network subnet where the Elasticsearch domain resides.
+    Type: String
+  ElasticsearchVPC:
+    Description: Virtual Private Cloud (VPC) id to be used.
+    Type: String
+  ProxyEC2InstanceSSHKey:
+    Type: String
+  ProxyEC2InstanceType:
+    Type: String
+  ProxyEC2ImageId:
+    Type: String
+    Description: AMI to use for EC2 reverse proxy nodes
+  ProxyEC2InstanceProfile:
+    Type: String
+  ProxySubnet1:
+    Type: String
+  ProxyLBSubnet1:
+    Type: String
+  ProxyLBSubnet2:
+    Type: String
+  ProxyLBSubnet3:
+    Type: String
+  ProxyVPC:
+    Type: String
+  ProxyR53HostedZone:
+    Type: String
+  ProxyR53Name:
+    Type: String
+  ProxyCertificate:
+    Type: String
+  CognitoUserPoolDomain:
+    Type: String
+
+Resources:
+  ElasticsearchStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: elasticsearch.yaml
+      TimeoutInMinutes: '30' #it takes a while :-/
+      Parameters:
+        Owner: !Ref Owner
+        Brand: !Ref Brand
+        Application: !Ref Application
+        Environment: !Ref Environment
+        ElasticsearchDomainName: !Ref ElasticsearchDomainName
+        ElasticsearchGroupDescription: !Ref ElasticsearchGroupDescription
+        ElasticsearchVersion: !Ref ElasticsearchVersion
+        ElasticsearchDedicatedMasterEnabled: !Ref ElasticsearchDedicatedMasterEnabled
+        ElasticsearchDedicatedMasterType: !Ref ElasticsearchDedicatedMasterType
+        ElasticsearchDedicatedMasterCount: !Ref ElasticsearchDedicatedMasterCount
+        ElasticsearchInstanceType: !Ref ElasticsearchInstanceType
+        ElasticsearchInstanceCount: !Ref ElasticsearchInstanceCount
+        ElasticsearchZoneAwarenessEnabled: !Ref ElasticsearchZoneAwarenessEnabled
+        ElasticsearchEBSEnabled: !Ref ElasticsearchEBSEnabled
+        ElasticsearchEncryptionAtRest: !Ref ElasticsearchEncryptionAtRest
+        ElasticsearchNodeToNodeEncryption: !Ref ElasticsearchNodeToNodeEncryption
+        ElasticsearchSnapshotStartHour: !Ref ElasticsearchSnapshotStartHour
+        ElasticsearchIops: !Ref ElasticsearchIops
+        ElasticsearchVolumeSize: !Ref ElasticsearchVolumeSize
+        ElasticsearchVolumeType: !Ref ElasticsearchVolumeType
+        ElasticsearchAvailabilityZone: !Ref ElasticsearchAvailabilityZone
+        ElasticsearchSubnet1: !Ref ElasticsearchSubnet1
+        ElasticsearchSubnet2: !Ref ElasticsearchSubnet2
+        ElasticsearchVPC: !Ref ElasticsearchVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-ElasticsearchStack
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Elasticsearch stack for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  NginxProxyStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: proxy.yaml
+      TimeoutInMinutes: '15'
+      Parameters:
+        Owner: !Ref Owner
+        Brand: !Ref Brand
+        Application: !Ref Application
+        Environment: !Ref Environment
+        ProxyEC2InstanceSSHKey: !Ref ProxyEC2InstanceSSHKey
+        ProxyEC2InstanceType: !Ref ProxyEC2InstanceType
+        ProxyEC2ImageId: !Ref ProxyEC2ImageId
+        ProxyEC2InstanceProfile: !Ref ProxyEC2InstanceProfile
+        ProxySubnet1: !Ref ProxySubnet1
+        ProxyLBSubnet1: !Ref ProxyLBSubnet1
+        ProxyLBSubnet2: !Ref ProxyLBSubnet2
+        ProxyLBSubnet3: !Ref ProxyLBSubnet3
+        ProxyVPC: !Ref ProxyVPC
+        ProxyR53HostedZone: !Ref ProxyR53HostedZone
+        ProxyR53Name: !Ref ProxyR53Name
+        ProxyCertificate: !Ref ProxyCertificate
+        CognitoUserPoolArn: !GetAtt CognitoStack.Outputs.CognitoUserPoolArn
+        CognitoUserPoolClientId: !GetAtt CognitoStack.Outputs.CognitoUserPoolClientId
+        CognitoUserPoolDomain: !Ref CognitoUserPoolDomain
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-NginxProxyStack
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Nginx/Network stack for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+    DependsOn: CognitoStack
+
+  CognitoStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: cognito.yaml
+      TimeoutInMinutes: '15'
+      Parameters:
+        Owner: !Ref Owner
+        Brand: !Ref Brand
+        Application: !Ref Application
+        Environment: !Ref Environment
+        KibanaEndpoint: !GetAtt ElasticsearchStack.Outputs.KibanaEndpoint
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-CognitoStack
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Cognito stack for your system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+    DependsOn: ElasticsearchStack
+
+  PostDeployStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - ElasticsearchStack
+      - NginxProxyStack
+      - CognitoStack
+    Properties:
+      TemplateURL: post_deploy.yaml
+      TimeoutInMinutes: '15'
+      Parameters:
+        Owner: !Ref Owner
+        Brand: !Ref Brand
+        Application: !Ref Application
+        Environment: !Ref Environment
+        MainStackName: !Ref 'AWS::StackName'
+        ElasticSearchStackName: !GetAtt ElasticsearchStack.Outputs.ElasticsearchStackName
+        CognitoStackName: !GetAtt CognitoStack.Outputs.CognitoStackName
+        NginxStackName: !GetAtt NginxProxyStack.Outputs.NginxProxyStackName
+        CognitoUserPoolDomain: !Ref CognitoUserPoolDomain
+
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Brand}-PostDeployStack
+        - Key: Application
+          Value: !Ref Application
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: BusinessUnit
+          Value: !Ref Brand
+        - Key: Description
+          Value: AWS Cognito stack for profile acquisition PAGES system.
+        - Key: StackId
+          Value: !Sub '${AWS::StackName}'
+        - Key: Stack
+          Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+
+
+###############################################################
+# DO NOT REMOVE - REQUIRED FOR CODEDEPLOY SCRIPTS TO EXECUTE  #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# V V V V V V V V V V V V V V V V V V V V V V V V V V V V V V #
+Outputs:
+  ElasticsearchDomainEndpoint:
+    Value:
+      Fn::GetAtt:
+      - ElasticsearchStack
+      - Outputs.ElasticsearchDomainEndpoint
+  KibanaEndpoint:
+    Value:
+      Fn::GetAtt:
+      - ElasticsearchStack
+      - Outputs.KibanaEndpoint
+  Environment:
+    Value:
+      Ref: Environment
+# ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ ^ #
+# | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | #
+# DO NOT REMOVE - REQUIRED FOR CODEDEPLOY SCRIPTS TO EXECUTE  #
+###############################################################
+  NginxProxyDNS:
+    Value:
+      Fn::GetAtt:
+      - NginxProxyStack
+      - Outputs.NginxProxyDNS
+  CognitoUserPoolArn:
+    Value:
+      Fn::GetAtt:
+      - CognitoStack
+      - Outputs.CognitoUserPoolArn
+  CognitoUserPoolClientId:
+    Value:
+      Fn::GetAtt:
+      - CognitoStack
+      - Outputs.CognitoUserPoolClientId
+  UserId:
+    Value: !Ref "AWS::AccountId"
+ ## NOT YET SUPPORTED IN CLOUDFORMATION BUT WE'LL LEAVE IT HERE ##
+  # CognitoUserPoolDomain:
+  #   Value:
+  #     Fn::GetAtt:
+  #     - CognitoStack
+  #     - Outputs.CognitoUserPoolDomain
