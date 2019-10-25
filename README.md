@@ -71,15 +71,15 @@ sh ./elasticsearch/scripts/deploy.sh -e prod
 
 ## Testing CodeDeploy manually
 
-* If local stack output testing has been satisfied, you may wish to deploy the package to CodeDeploy manually before running your code through the pipeline. To do this, you will need to push your new package to S3 and then deploy your new package as a new deployment.
+* CODEDEPLOY IS REQUIRED TO INSTALL AND CONFIGURE NGINX ON YOUR EC2. If local stack output testing has been satisfied, you may wish to deploy the package to CodeDeploy manually before running your code through the pipeline. To do this, you will need to push your new package to S3 and then deploy your new package as a new deployment.
     * Run  
     ```bash
-    aws deploy push --application-name dev-#TODO#-kibana --description "testing" --ignore-hidden-files --s3-location s3://dev-#TODO#/kibana/kibanadeploy.zip --source ./elasticsearch --profile ##TODO##
+    aws deploy push --application-name ${Environment}-${Brand}-kibana --description "testing" --ignore-hidden-files --s3-location s3://dev-#TODO#/kibana/kibanadeploy.zip --source ./elasticsearch --profile ##TODO##
     ```
     * Copy the resulting eTag from the output of the above command and replace the eTag in the deploy command. (below)
     * Run 
     ```bash
-    aws deploy create-deployment --application-name dev-#TODO#-kibana --s3-location bucket=dev-#TODO#-elasticsearch-configs,key=kibana/kibanadeploy.zip,bundleType=zip,eTag=541be9834bfef6b627743d3d5de370de --deployment-group-name dev --deployment-config-name dev-#TODO#-kibana --profile ##TODO##
+    aws deploy create-deployment --application-name ${Environment}-${Brand}-kibana --s3-location bucket=dev-#TODO#-elasticsearch-configs,key=kibana/kibanadeploy.zip,bundleType=zip,eTag=541be9834bfef6b627743d3d5de370de --deployment-group-name dev --deployment-config-name dev-#TODO#-kibana --profile ##TODO##
     ```
     * Check the CodeDeploy console to see your new deployment runs successfully.
 
