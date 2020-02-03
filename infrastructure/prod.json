@@ -5,7 +5,7 @@
     "Application" : "##TODO##",
     "Owner" : "##TODO##",
     "ElasticsearchDomainName" : "##TODO##",
-    "ElasticsearchVersion" : "6.5",
+    "ElasticsearchVersion" : "7.1",
     "ElasticsearchDedicatedMasterEnabled" : "true",
     "ElasticsearchDedicatedMasterType" : "r5.##TODO##.elasticsearch",
     "ElasticsearchDedicatedMasterCount" : "3",
