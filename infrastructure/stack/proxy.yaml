@@ -23,10 +23,11 @@ Parameters:
   ProxyEC2ImageId:
     Type: String
     Description: AMI to use for EC2 reverse proxy nodes
+    Default: ami-0323c3dd2da7fb37d
   # ProxyEC2ImageId:
   #   Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
   #   Description: AMI to use for EC2 reverse proxy nodes
-  #/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  #   Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
   ProxyEC2InstanceProfile:
     Type: String
   ProxySubnet1:
@@ -296,21 +297,22 @@ Resources:
           Value: !Sub '${AWS::Region}-${AWS::StackName}'
       UserData: 
         Fn::Base64: !Sub |
-          #!/bin/bash -xe
-
-          # output log of userdata to /var/log/user-data.log
-          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-
-          ## Installing the CodeDeploy agent via user-data so we can do some more configuration when EC2 is up. 
-          ## https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent-operations-install-ubuntu.html
-          apt-get update -y
-          apt-get install ruby -y
-          cd /home/ubuntu 
-          curl --remote-name https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          #!/bin/bash
+          yum update -y
+          yum install -y aws-cli ruby jq
+          amazon-linux-extras install nginx1.12
+          cd /tmp/
+          wget https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install
           chmod +x ./install
-          ./install auto
-          apt-get install python3-pip -y
-          pip3 install awscli --upgrade
+
+          if ./install auto; then
+            echo "Installation completed"
+            exit 0
+          else
+            echo "Installation script failed, please investigate"
+            rm -f /tmp/install
+            exit 1
+          fi
 
   ProxyInstanceEIP:
     Type: AWS::EC2::EIP
