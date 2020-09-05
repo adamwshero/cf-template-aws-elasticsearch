@@ -82,7 +82,7 @@ Resources:
           Value: ##TODO##
       Username: ##TODO##
 
-  # Currently supported by AWS but can't attach roles to it..so f*** it.
+  # Currently supported by AWS but can't attach roles to it..so we wait.
   CognitoIdentityPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
@@ -92,7 +92,7 @@ Resources:
         - ClientId: !Ref CognitoUserPoolClient
           ProviderName: !GetAtt CognitoUserPool.ProviderName
 
-  # Currently not supported by AWS but ready here when AWS can un-f*** themselves.
+  # Currently not supported by AWS but ready here when AWS can fix it.
 
   # CognitoIdentityPoolRoleAttachment:
   #  Type: AWS::Cognito::IdentityPoolRoleAttachment
