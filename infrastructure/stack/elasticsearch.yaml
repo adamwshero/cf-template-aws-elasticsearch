@@ -88,6 +88,12 @@ Parameters:
     Type: String
 
 Resources:
+  #Service linked role, required for es to complete its setup
+  ElasticsearchLinkedServiceRole:
+    Type: AWS::IAM::ServiceLinkedRole
+    Properties:
+      AWSServiceName: es.amazonaws.com
+
   ElasticsearchDomain:
     Type: AWS::Elasticsearch::Domain
     Properties:
@@ -117,7 +123,9 @@ Resources:
           - Effect: Allow
             Principal:
               AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS_${Environment}_Cognito_${Application}_Auth_Role
-            Action: 'es:*'
+            Action: 
+              - es:ESHttpGet*
+              - es:ESHttpPost*
             Resource: !Sub arn:aws:cognito-idp:us-east-1:${AWS::AccountId}:domain/${Environment}-##TODO##/*
       AdvancedOptions:
         rest.action.multi.allow_explicit_index: 'true'
@@ -145,6 +153,7 @@ Resources:
           Value: !Sub '${AWS::StackName}'
         - Key: Stack
           Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
   ElasticsearchSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -170,6 +179,44 @@ Resources:
           Value: !Sub '${AWS::StackName}'
         - Key: Stack
           Value: !Sub '${AWS::Region}-${AWS::StackName}'
+
+  ESSelfReferenceIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: ElasticsearchSG
+    Properties:
+      Description: Self
+      GroupId: !Ref ElasticsearchSG
+      SourceSecurityGroupId:  !Ref ElasticsearchSG
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  CognitoAdminElasticsearchAccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub ${Environment}-${BusinessUnit}-${Application}-admin-access-policy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - es:*
+            Resource: '*'
+      Roles:
+        - !Ref CognitoAdminRole
+
+  CognitoAuthAccessPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub ${Environment}-${BusinessUnit}-${Application}-auth-access-policy
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - es:ESHttpGet*
+              - es:ESHttpPost*
+            Resource: '*'
+      Roles:
+        - !Ref CognitoAuthRole
 
 Outputs:
   ElasticsearchDomainArn:
