@@ -26,7 +26,7 @@ Parameters:
     Default: ami-0323c3dd2da7fb37d
   # ProxyEC2ImageId:
   #   Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-  #   Description: AMI to use for EC2 reverse proxy nodes
+  #   Description: AMI to use for EC2 proxy nodes
   #   Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
   ProxyEC2InstanceProfile:
     Type: String
@@ -78,7 +78,7 @@ Resources:
         - Key: BusinessUnit
           Value: !Ref Brand
         - Key: Description
-          Value: ALB for Nginx reverse proxy for the Elasticsearch domain
+          Value: ALB for Nginx proxy for the Elasticsearch domain
         - Key: StackId
           Value: !Sub '${AWS::StackName}'
         - Key: Stack
