@@ -344,7 +344,7 @@ Resources:
         - Key: Application
           Type: KEY_AND_VALUE
           Value: !Sub ${Application}
-      ServiceRoleArn: arn:aws:iam::229357985605:role/gig-dev-codeDeploy
+      ServiceRoleArn: arn:aws:iam::${AWS::AccountId}:role/${##TODO##}
 
 Outputs:
   NginxInternalIp:
