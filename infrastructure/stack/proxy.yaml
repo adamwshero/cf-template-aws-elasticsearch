@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Ngnix reverse proxy for the Elasticsearch Domain.
+Description: Ngnix proxy for the Elasticsearch Domain.
 Parameters:
   Environment:
     Description: Name of the environment for which this application resides.
@@ -22,7 +22,7 @@ Parameters:
     Type: String
   ProxyEC2ImageId:
     Type: String
-    Description: AMI to use for EC2 reverse proxy nodes
+    Description: AMI to use for EC2 proxy nodes
     Default: ami-0323c3dd2da7fb37d
   # ProxyEC2ImageId:
   #   Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
