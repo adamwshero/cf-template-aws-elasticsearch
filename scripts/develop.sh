@@ -1,6 +1,5 @@
 #!/bin/bash
 echo "Cleaning"
-rm -rf deploy
 rm -f requirements.txt
 rm -rf .venv
 echo "Ensuring venv is created within the project"
