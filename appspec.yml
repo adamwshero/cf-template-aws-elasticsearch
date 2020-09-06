@@ -24,9 +24,6 @@ hooks:
     - location: scripts/cleanup.sh
       timeout: 300
       runas: root
-    - location: scripts/nginx.sh
-      timeout: 300
-      runas: root
   AfterInstall:
     - location: scripts/get_stack_output.sh
       timeout: 300
@@ -34,7 +31,3 @@ hooks:
     - location: scripts/read_replace.py
       timeout: 300
       runas: root
-    - location: scripts/place_conf.sh
-      timeout: 300
-      runas: root
-
