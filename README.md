@@ -1,9 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![](https://img.shields.io/maintenance/yes/2020.svg)
 
 # Nested stack for Elasticsearch, Cognito, and Nginx. All information regarding these stacks will live here.
-
-# Clone
-git clone git@github.com:adamwday/elasticsearch
 
 ## Resource - Elasticsearch
 ## What this stack does
