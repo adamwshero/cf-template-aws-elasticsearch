@@ -1,5 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![](https://img.shields.io/maintenance/yes/2020.svg)
+![](https://img.shields.io/maintenance/yes/2021.svg)
 
 # Nested stack for Elasticsearch, Cognito, and Nginx. All information regarding these stacks will live here.
 
@@ -109,3 +109,32 @@ sh ./elasticsearch/scripts/deploy.sh -e prod
 * CloudFormation does not allow you to hook up the Cognito user pool and identity pool to the ElasticSearch domain. This needs to happen before CodeDeploy runs the nginx.sh script. 
 
 * To avoid a circular dependency, the ingress rule for the Elasticsearch domain needs to be added post-deploy since the security group for the Kibana EC2 (which will be added to the ElasticSearch SG) does not yet exist as the stack is getting built.
+
+## Troubleshooting/Checklist
+### 504 Gateway Timeout.
+* Once you have deployed, and you are perplexed about why you are getting a gateway timeout, run the deploy script again.
+The templates will have no updates, but the enable cognito and code deploy scripts will run. Sometimes this will resolve the issue.
+* Ensure the elasticsearch security group includes an inbound 443 rule from the Kibana internal security group.
+* SSH into the Nginx EC2 and see if the service is running using `sudo service nginx status`. If it is, restart the service using `sudo service nginx restart`.
+    * This is caused by ipv6 being enabled. Check to see if ipv6 is disabled on the EC2 by using `cat /proc/sys/net/ipv6/conf/all/disable_ipv6` and you should see a response of "1". If you see a response of "0", run `sudo vim /etc/sysctl.conf` and ensure the following are added to the end of the file: 
+        * net.ipv6.conf.all.disable_ipv6 = 1
+        * net.ipv6.conf.default.disable_ipv6 = 1
+        * net.ipv6.conf.lo.disable_ipv6 = 1
+    * Then run `cat /proc/sys/net/ipv6/conf/all/disable_ipv6` to see if it returns "1". If returns "0", then run 'sudo sysctl -p' and check again. It should now return "1".
+
+### 502 Bad Gateway
+* Ensure the security group for the elasticsearch domain includes an HTTPS ingress rule for the security group of the Nginx proxy.
+
+### Cognito auth fails to send you to the Kibana dashboard upon changing your password for the first time.
+* Cognito is flaky and you may need to flush cookies or reload the login page in incognito mode to bypass this one-time bug.
+
+### You are not redirected to Cognito upon requesting https://pac-kibana.svc.dhigroupinc.com/
+* Check that a domain has been created for the Cognito User Pool.
+* Check that "Use Cognito for Authentication" is enabled on the Elasticsearch domain and that the Cognito User Pool and Idendity Pool are selected.
+
+### You authenticate via Cognito and receive a Cognito error that you need an error like `not authorized to perform: es:ESHttpGet`
+* Check that the resource policy on the Elasticsearch domain allows `Action - es:*` for the Cognito User Pool.
+* Check that the trust relationship for both Cognito Auth and Unauth roles match the arn of the current identity pool. (unusual)
+
+### Helpful References
+* https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-cognito-auth.html
