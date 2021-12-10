@@ -3,6 +3,9 @@
 
 # Nested stack for Elasticsearch, Cognito, and Nginx. All information regarding these stacks will live here.
 
+## Architecture
+![alt text](elasticsearch.png)
+
 ## Resource - Elasticsearch
 ## What this stack does
 
