@@ -6,7 +6,7 @@
 ## Architecture
 ![alt text](elasticsearch.png)
 
-## Resource - Elasticsearch
+## Elasticsearch Stack
 ## What this stack does
 
 * Creates an (VPC Only) Elasticsearch Domain which includes a VPC endpoint to which you can interact with Kibana. (Note: The domain can run "headless" or sans VPC endpoint if desired.)
@@ -15,8 +15,7 @@
 
 * Uses existing subnets and VPC.
 
-## Resource - Nginx Proxy
-
+## Nginx Proxy Stack
 ## What this stack does
 
 * Creates an EC2 instance with Nginx installed and configured to redirect requests to Cognito for authentication and then to the Elasticsearch Kibana endpoint.
@@ -25,8 +24,7 @@
 
 * Creates a load balancer, HTTP/HTTPS listeners, attaches a pre-existing ACM certificate to the HTTPS listener, Route53 alias, target group, and security groups.
 
-## Resource - Cognito
-
+## Cognito Stack
 ## What this stack does
 
 * Creates a Cognito User Pool of employees who are permitted to access Kibana dashboard.
@@ -35,8 +33,7 @@
 
 * Creates a Cognito User Pool/Group to control access to the Kibana Endpoint. (Note: Will later support Okta ideally or SAML at minimum). For now, users are manually managed in CloudFormation.
 
-## Resource - Post Deploy
-
+## Post Deploy Stack
 ## What this stack does
 
 * Provides lambdas that will complete the deployment due to Cloudformation Template limitations
